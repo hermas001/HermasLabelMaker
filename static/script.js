@@ -249,81 +249,23 @@ async function generateCombinedPDF() {
     generateAllButton.disabled = true;
     generateAllButton.innerHTML = `${LOADER_ICON_SVG} <span>Generating PDF...</span>`;
 
-    // --- PDF Layout Constants ---
-    const PAGE_WIDTH_MM = 145;
-    const PAGE_HEIGHT_MM = 220;
-    const LABEL_WIDTH_MM = 45.997;
-    const LABEL_HEIGHT_MM = 29.438;
-    const COLS = 3;
-    const ROWS = 7;
-    const LABELS_PER_PAGE = COLS * ROWS;
-    const STICKER_GAP_X_MM = 1.2;
-    const STICKER_GAP_Y_MM = 1.5;
-    const GRID_WIDTH_MM = COLS * LABEL_WIDTH_MM + (COLS - 1) * STICKER_GAP_X_MM;
-    const GRID_HEIGHT_MM = ROWS * LABEL_HEIGHT_MM + (ROWS - 1) * STICKER_GAP_Y_MM;
-    const MARGIN_X_MM = (PAGE_WIDTH_MM - GRID_WIDTH_MM) / 2;
-    const MARGIN_Y_MM = (PAGE_HEIGHT_MM - GRID_HEIGHT_MM) / 2;
-    const INNER_BOX_WIDTH_MM = 13.121;
-    const INNER_BOX_HEIGHT_MM = 11.1488;
-    const INNER_BOX_OFFSET_X = 30.689;
-    const INNER_BOX_OFFSET_Y = 8.949;
-
     try {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: [PAGE_WIDTH_MM, PAGE_HEIGHT_MM]
+        // Send labelArray to backend for SVG-to-PDF generation
+        const response = await fetch('/generate-labels-pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ labels: labelArray })
         });
-
-        let stickerIndex = 0;
-        let page = 0;
-        let totalStickers = calculateTotalStickersInArray();
-        let stickers = [];
-        // Flatten labelArray into a stickers array
-        labelArray.forEach(item => {
-            for (let i = 0; i < Number(item.numberOfStickers); i++) {
-                stickers.push(item);
-            }
-        });
-
-        for (let i = 0; i < stickers.length; i++) {
-            if (i > 0 && i % LABELS_PER_PAGE === 0) {
-                doc.addPage([PAGE_WIDTH_MM, PAGE_HEIGHT_MM], 'portrait');
-                page++;
-            }
-            const labelNum = i % LABELS_PER_PAGE;
-            const row = Math.floor(labelNum / COLS);
-            const col = labelNum % COLS;
-            const x = MARGIN_X_MM + col * (LABEL_WIDTH_MM + STICKER_GAP_X_MM);
-            const y = MARGIN_Y_MM + row * (LABEL_HEIGHT_MM + STICKER_GAP_Y_MM);
-
-            // Draw label box (black fill, black border)
-            doc.setDrawColor(0, 0, 0); // Black border
-            doc.setLineWidth(0.2);
-            doc.setFillColor(0, 0, 0); // Black fill
-            doc.rect(x, y, LABEL_WIDTH_MM, LABEL_HEIGHT_MM, 'S'); // 'S' for stroke only, change to 'FD' for fill+stroke if needed
-
-            // Draw inner box (black fill, black border)
-            doc.setDrawColor(0, 0, 0);
-            doc.setLineWidth(0.2);
-            doc.setFillColor(0, 0, 0);
-            doc.rect(x + INNER_BOX_OFFSET_X, y + INNER_BOX_OFFSET_Y, INNER_BOX_WIDTH_MM, INNER_BOX_HEIGHT_MM, 'S');
-
-            // Set text color to black
-            doc.setTextColor(0, 0, 0);
-
-            // Add label text (all uppercase)
-            doc.setFontSize(10);
-            doc.text((stickers[i].productName || '').toUpperCase(), x + 2, y + 7, { maxWidth: LABEL_WIDTH_MM - 4 });
-            doc.setFontSize(8);
-            doc.text((`BATCH: ${stickers[i].batchNumber || ''}`).toUpperCase(), x + 2, y + 13);
-            doc.text((`QTY: ${stickers[i].quantityInBox || ''}`).toUpperCase(), x + 2, y + 18);
-            doc.text((`WT/VOL: ${stickers[i].weightVolume || ''}`).toUpperCase(), x + 2, y + 23);
-            doc.text((`MFG: ${stickers[i].mfgDate || ''}`).toUpperCase(), x + 2, y + 28);
-        }
-
-        doc.save('herbal_product_labels.pdf');
+        if (!response.ok) throw new Error('PDF generation failed');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'herbal_product_labels.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
         showCustomModal('Success', 'PDF generated with all labels.');
     } catch (error) {
         console.error("Error generating PDF:", error);
