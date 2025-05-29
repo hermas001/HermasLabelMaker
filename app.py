@@ -52,6 +52,16 @@ def generate_labels_pdf():
     pdf_file = tempfile.mktemp(suffix=".pdf")
     dwg = svgwrite.Drawing(svg_file, size=(mm(PAGE_WIDTH_MM), mm(PAGE_HEIGHT_MM)))
 
+    # Embed Franklin Gothic Demi font using @font-face in SVG defs with absolute file path for CairoSVG compatibility
+    font_abs_path = os.path.abspath(os.path.join('static', 'font', 'franklingothic_demi.ttf')).replace('\\', '/')
+    font_face_css = f'''
+    @font-face {{
+        font-family: "Franklin Gothic Demi";
+        src: url("file:///{font_abs_path}");
+    }}
+    '''
+    dwg.defs.add(dwg.style(font_face_css))
+
     for idx in range(LABELS_PER_PAGE):
         row = idx // COLS
         col = idx % COLS
@@ -62,12 +72,48 @@ def generate_labels_pdf():
         group.add(dwg.rect(insert=(0, 0), size=(mm(LABEL_WIDTH_MM), mm(LABEL_HEIGHT_MM)), fill='white', stroke='black', stroke_width=mm(0.3)))
         # Inner box
         group.add(dwg.rect(insert=(mm(INNER_BOX_X_OFFSET_MM), mm(INNER_BOX_Y_OFFSET_MM)), size=(mm(INNER_BOX_WIDTH_MM), mm(INNER_BOX_HEIGHT_MM)), fill='white', stroke='black', stroke_width=mm(0.3)))
+        # Manual controls for BATCH NO : placeholder
+        BATCH_FONT_SIZE_MM = 4.5  # Font size in mm
+        BATCH_SCALE_X = 1.0       # Horizontal scaling (1.0 = normal, >1 = stretch, <1 = shrink)
+        BATCH_X_MM = 3.7          # X position in mm
+        BATCH_Y_MM = 12           # Y position in mm
         # Placeholders
-        group.add(dwg.text("BATCH NO :", insert=(mm(3.7), mm(12)), font_size=mm(4.5), font_family='Arial Black', fill='black'))
-        group.add(dwg.text("QTY", insert=(mm(3.7), mm(22)), font_size=mm(4.5), font_family='Arial Black', fill='black'))
-        group.add(dwg.text("→", insert=(mm(25), mm(22)), font_size=mm(4.5), font_family='Arial Black', fill='black'))
-        group.add(dwg.text("MFG", insert=(mm(3.7), mm(28)), font_size=mm(4.5), font_family='Arial Black', fill='black'))
-        group.add(dwg.text("→", insert=(mm(25), mm(28)), font_size=mm(4.5), font_family='Arial Black', fill='black'))
+        group.add(dwg.text(
+            "BATCH NO :",
+            insert=(mm(BATCH_X_MM), mm(BATCH_Y_MM)),
+            font_size=mm(BATCH_FONT_SIZE_MM),
+            font_family='Franklin Gothic Demi',
+            fill='black',
+            transform=f'scale({BATCH_SCALE_X},1)'
+        ))
+        group.add(dwg.text(
+            "QTY",
+            insert=(mm(3.7), mm(22)),
+            font_size=mm(4.5),
+            font_family='Franklin Gothic Demi',
+            fill='black'
+        ))
+        group.add(dwg.text(
+            "→",
+            insert=(mm(25), mm(22)),
+            font_size=mm(4.5),
+            font_family='Franklin Gothic Demi',
+            fill='black'
+        ))
+        group.add(dwg.text(
+            "MFG",
+            insert=(mm(3.7), mm(28)),
+            font_size=mm(4.5),
+            font_family='Franklin Gothic Demi',
+            fill='black'
+        ))
+        group.add(dwg.text(
+            "→",
+            insert=(mm(25), mm(28)),
+            font_size=mm(4.5),
+            font_family='Franklin Gothic Demi',
+            fill='black'
+        ))
         dwg.add(group)
 
     dwg.save()
